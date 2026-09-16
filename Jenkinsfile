@@ -6,11 +6,25 @@ pipeline {
         skipDefaultCheckout(true)
     }
 
+    tools {
+        jdk 'JDK21'
+    }
+
     stages {
 
         stage('Checkout') {
             steps {
                 checkout scm
+            }
+        }
+
+        stage('Check Java') {
+            steps {
+                sh '''
+                    java -version
+                    javac -version
+                    ./mvnw -version
+                '''
             }
         }
 
@@ -21,7 +35,6 @@ pipeline {
         }
 
         stage('Tests') {
-
             steps {
                 sh './mvnw -B test'
             }
@@ -34,11 +47,11 @@ pipeline {
         }
 
         stage('Package') {
-
             steps {
                 sh './mvnw -B -DskipTests package'
 
-                archiveArtifacts 'target/*.jar'
+                archiveArtifacts artifacts: 'target/*.jar',
+                                 fingerprint: true
             }
         }
 
@@ -65,8 +78,7 @@ pipeline {
                         -name '*.jar' \
                         | head -1)
 
-                    cp "$JAR_FILE" \
-                       "$RELEASE_DIR/app.jar"
+                    cp "$JAR_FILE" "$RELEASE_DIR/app.jar"
 
                     if [ -f "$DEPLOY_ROOT/app.pid" ]; then
 
@@ -101,6 +113,7 @@ pipeline {
 
                 sh '''
                     sleep 5
+
                     curl -f \
                     http://127.0.0.1:8081/api/health
                 '''
